@@ -8,10 +8,31 @@ namespace Mash.AhoCoraSick
     {
 
         private readonly object _lock = new object();
+        internal const int AlphabetSize = 28;
 
         private readonly List<StateNode> _automatonTree = new List<StateNode>() { new StateNode() };
         private int _currentNodeNo = 0;
 
+        private int AlphabetToIndexValue(char ch)
+        {
+
+            int indexValue;
+            if (ch == '-')
+            {
+                indexValue = 26;
+            }
+            else if (ch == '\'')
+            {
+                indexValue = 27;
+
+            }
+            else
+            {
+                indexValue = ch.ToLowerValueIfUpperCase() - 'a';
+            }
+
+            return indexValue;
+        }
         public AhoCorasickEnglishWordsSetSearch()
         {
 
@@ -47,12 +68,10 @@ namespace Mash.AhoCoraSick
                 int currentNode = 0;
                 foreach (char ch in searchWord.ToCharArray())
                 {
-                    int charValue = ch.ToLowerValueIfUpperCase();
-                    if (charValue == '-') continue;
-                    charValue -= 'a';
-                    if (_automatonTree[currentNode].NexNode[charValue] == -1)
+                    int indexValue = this.AlphabetToIndexValue(ch);
+                    if (_automatonTree[currentNode].NexNode[indexValue] == -1)
                     {
-                        _automatonTree[currentNode].NexNode[charValue] = _automatonTree.Count;
+                        _automatonTree[currentNode].NexNode[indexValue] = _automatonTree.Count;
                         currentNode = _automatonTree.Count;
                     }
 
@@ -104,19 +123,14 @@ namespace Mash.AhoCoraSick
         {
             lock (_lock)
             {
-                int charValue = nextChar.ToLowerValueIfUpperCase();
-                if (charValue == '-')
+                int indexValue = this.AlphabetToIndexValue(nextChar);
+                if (indexValue < 0 || indexValue >= AlphabetSize)
                 {
+                    _currentNodeNo = 0;
                     return false;
-                }
 
-                if (charValue < 'a' || charValue > 'z')
-                {
-                    this._currentNodeNo = 0;
-                    return false;
                 }
-
-                _currentNodeNo = NextNodeToGo(_currentNodeNo, (byte)charValue);
+                _currentNodeNo = NextNodeToGo(_currentNodeNo, (byte)indexValue);
                 return _automatonTree[_currentNodeNo].IsMatch;
             }
         }

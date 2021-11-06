@@ -7,7 +7,6 @@ namespace Mash.AhoCoraSick
 {
     internal class StateNode
     {
-        private const int AlphabetSize = 26;
         public int[] NexNode;
         public bool IsMatch;
         public int ParentNodeNo;
@@ -20,11 +19,11 @@ namespace Mash.AhoCoraSick
 
             this.ParentNodeNo = parentNodeNo;
             this.ParentChar = parentChar;
-            this.NexNode = new int[AlphabetSize];
+            this.NexNode = new int[AhoCorasickEnglishWordsSetSearch.AlphabetSize];
             this.NexNode.Fill(-1);
             this.IsMatch = isMatch;
             this.FailureLink = -1;
-            this.NextNodeToGo = new int[AlphabetSize];
+            this.NextNodeToGo = new int[AhoCorasickEnglishWordsSetSearch.AlphabetSize];
             this.NextNodeToGo.Fill(-1);
         }
     };
