@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Mash.HelperMethods.NET.ExtensionMethods;
 
 namespace Mash.AhoCoraSick
 {
@@ -20,11 +21,11 @@ namespace Mash.AhoCoraSick
             this.ParentNodeNo = parentNodeNo;
             this.ParentChar = parentChar;
             this.NexNode = new int[AlphabetSize];
-            Array.Fill(this.NexNode, -1);
+            this.NexNode.Fill(-1);
             this.IsMatch = isMatch;
             this.FailureLink = -1;
             this.NextNodeToGo = new int[AlphabetSize];
-            Array.Fill(this.NextNodeToGo, -1);
+            this.NextNodeToGo.Fill(-1);
         }
     };
 }
