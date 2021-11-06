@@ -9,7 +9,7 @@ namespace Mash.AhoCoraSick
     {
 
         private readonly object _lock = new object();
-        internal const int AlphabetSize = 30;
+        internal const int AlphabetSize = 40;
 
         private readonly List<StateNode> _automatonTree = new List<StateNode>() { new StateNode() };
         private int _currentNodeNo = 0;
@@ -17,22 +17,29 @@ namespace Mash.AhoCoraSick
         private int AlphabetToIndexValue(char ch)
         {
 
-            if (ch <= '.')
+            if (ch <= '9' && ch >= '&')
             {
+                if (ch >= '0' && ch <= '9')
+                {
+                    return 30 + (ch - '0');
+                }
                 if (ch == '-')
                 {
                     return 26;
                 }
-                else if (ch == '\'')
+
+                if (ch == '\'')
                 {
                     return 27;
 
                 }
-                else if (ch == '&')
+
+                if (ch == '&')
                 {
                     return 28;
                 }
-                else if (ch == '.')
+
+                if (ch == '.')
                 {
                     return 29;
                 }
