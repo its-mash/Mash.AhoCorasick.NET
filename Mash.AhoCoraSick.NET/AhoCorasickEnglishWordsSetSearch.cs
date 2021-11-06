@@ -1,6 +1,7 @@
 ﻿using Mash.HelperMethods.NET.ExtensionMethods;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Mash.AhoCoraSick
 {
@@ -8,7 +9,7 @@ namespace Mash.AhoCoraSick
     {
 
         private readonly object _lock = new object();
-        internal const int AlphabetSize = 28;
+        internal const int AlphabetSize = 30;
 
         private readonly List<StateNode> _automatonTree = new List<StateNode>() { new StateNode() };
         private int _currentNodeNo = 0;
@@ -16,22 +17,28 @@ namespace Mash.AhoCoraSick
         private int AlphabetToIndexValue(char ch)
         {
 
-            int indexValue;
-            if (ch == '-')
+            if (ch <= '.')
             {
-                indexValue = 26;
-            }
-            else if (ch == '\'')
-            {
-                indexValue = 27;
+                if (ch == '-')
+                {
+                    return 26;
+                }
+                else if (ch == '\'')
+                {
+                    return 27;
 
+                }
+                else if (ch == '&')
+                {
+                    return 28;
+                }
+                else if (ch == '.')
+                {
+                    return 29;
+                }
             }
-            else
-            {
-                indexValue = ch.ToLowerValueIfUpperCase() - 'a';
-            }
+            return ch.ToLowerValueIfUpperCase() - 'a';
 
-            return indexValue;
         }
         public AhoCorasickEnglishWordsSetSearch()
         {
@@ -62,7 +69,7 @@ namespace Mash.AhoCoraSick
 
                 if (!searchWord.IsValidEnglishWord())
                 {
-                    throw new ArgumentException("Search Word can only contain English Alphabets");
+                    throw new ArgumentException("Search Word can only contain English Alphabets and (' and - and & and . ) chars in the middle");
                 }
 
                 int currentNode = 0;
@@ -70,6 +77,7 @@ namespace Mash.AhoCoraSick
                 {
                     int indexValue = this.AlphabetToIndexValue(ch);
                     if (_automatonTree[currentNode].NexNode[indexValue] == -1)
+                    //  TODO: Update logic to ensure doesn't contain - and ' both
                     {
                         _automatonTree[currentNode].NexNode[indexValue] = _automatonTree.Count;
                         currentNode = _automatonTree.Count;
