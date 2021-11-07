@@ -11,9 +11,13 @@ namespace Mash.AhoCoraSick
         private readonly object _lock = new object();
         internal const int AlphabetSize = 40;
 
-        private readonly List<StateNode> _automatonTree = new List<StateNode>() { new StateNode() };
+        private readonly List<StateNode> _matchAsContainsAutomatonTree = new List<StateNode>() { new StateNode() };
+        private readonly List<StateNodeWordMatch> _matchAsWordAutomatonTree = new List<StateNodeWordMatch>() { new StateNodeWordMatch() };
         private int _currentNodeNo = 0;
+        private bool _matchAsWord = false;
 
+        /// Though SEOAnalyzer will always call with valid wordCharacter, we can remove the checks for further optimization,
+        /// but kept for Other Third-party uses, as we can't guaranty if third-party provide valid wordCharter
         private int AlphabetToIndexValue(char ch)
         {
 
@@ -47,12 +51,14 @@ namespace Mash.AhoCoraSick
             return ch.ToLowerValueIfUpperCase() - 'a';
 
         }
-        public AhoCorasickEnglishWordsSetSearch()
+        public AhoCorasickEnglishWordsSetSearch(bool matchAsWord = false)
         {
+            this._matchAsWord = matchAsWord;
 
         }
-        public AhoCorasickEnglishWordsSetSearch(string[] englishWordsSet)
+        public AhoCorasickEnglishWordsSetSearch(string[] englishWordsSet, bool matchAsWord = false)
         {
+            this._matchAsWord = matchAsWord;
             if (englishWordsSet == null)
             {
                 throw new ArgumentNullException(nameof(englishWordsSet));
@@ -62,6 +68,7 @@ namespace Mash.AhoCoraSick
             {
                 this.AddEnglishWord(word);
             }
+
         }
 
         public void AddEnglishWord(string searchWord)
@@ -79,44 +86,75 @@ namespace Mash.AhoCoraSick
                     throw new ArgumentException("Search Word can only contain English Alphabets and (' and - and & and . ) chars in the middle");
                 }
 
-                int currentNode = 0;
+                int currentNodeNo = 0;
                 foreach (char ch in searchWord.ToCharArray())
                 {
                     int indexValue = this.AlphabetToIndexValue(ch);
-                    if (_automatonTree[currentNode].NexNode[indexValue] == -1)
-                    //  TODO: Update logic to ensure doesn't contain - and ' both
+                    if (_matchAsWord)
                     {
-                        _automatonTree[currentNode].NexNode[indexValue] = _automatonTree.Count;
-                        currentNode = _automatonTree.Count;
+                        if (_matchAsWordAutomatonTree[currentNodeNo].NexNode[indexValue] == -1)
+                        {
+                            _matchAsWordAutomatonTree[currentNodeNo].NexNode[indexValue] =
+                                _matchAsWordAutomatonTree.Count;
+                            _matchAsWordAutomatonTree.Add(new StateNodeWordMatch());
+                        }
+
+                        currentNodeNo = _matchAsWordAutomatonTree[currentNodeNo].NexNode[indexValue];
+
+                    }
+                    else
+                    {
+                        if (_matchAsContainsAutomatonTree[currentNodeNo].NexNode[indexValue] == -1)
+                        {
+                            _matchAsContainsAutomatonTree[currentNodeNo].NexNode[indexValue] =
+                                _matchAsContainsAutomatonTree.Count;
+                            _matchAsContainsAutomatonTree.Add(new StateNode(currentNodeNo, (byte)ch));
+                        }
+
+                        currentNodeNo = _matchAsContainsAutomatonTree[currentNodeNo].NexNode[indexValue];
                     }
 
                 }
 
-                _automatonTree[currentNode].IsMatch = true;
+                if (_matchAsWord)
+                    _matchAsWordAutomatonTree[currentNodeNo].IsMatch = true;
+                else
+                    _matchAsContainsAutomatonTree[currentNodeNo].IsMatch = true;
             }
         }
 
-        private int NextNodeToGo(int currentNodeNo, byte charValue)
+        private int NextNodeToGoForPatternContainsMatch(int currentNodeNo, int charIndex)
         {
-            StateNode currentNode = _automatonTree[currentNodeNo];
-            if (currentNode.NextNodeToGo[charValue] == -1)
+
+            StateNode currentNode = _matchAsContainsAutomatonTree[currentNodeNo];
+            if (currentNode.NextNodeToGo[charIndex] == -1)
             {
-                if (currentNode.NexNode[charValue] != -1)
-                    currentNode.NextNodeToGo[charValue] = currentNode.NexNode[charValue];
+                if (currentNode.NexNode[charIndex] != -1)
+                {
+                    currentNode.NextNodeToGo[charIndex] = currentNode.NexNode[charIndex];
+                }
                 else
                 {
-                    currentNode.NextNodeToGo[charValue] =
-                        currentNodeNo == 0 ? 0 : NextNodeToGo(GetFailureLink(currentNodeNo), charValue);
+                    currentNode.NextNodeToGo[charIndex] =
+                        currentNodeNo == 0 ? 0 : NextNodeToGoForPatternContainsMatch(GetFailureLink(currentNodeNo), charIndex);
+                    currentNode.UsedFailureLink[charIndex] = true;
                 }
             }
 
-            return currentNode.NextNodeToGo[charValue];
+            return currentNode.NextNodeToGo[charIndex];
+
+        }
+        private int NextNodeToGoForMatchAsWord(int currentNodeNo, int charIndex)
+        {
+
+            StateNodeWordMatch currentNode = _matchAsWordAutomatonTree[currentNodeNo];
+            return currentNode.NexNode[charIndex];
 
         }
 
         private int GetFailureLink(int currentNodeNo)
         {
-            StateNode currentNode = _automatonTree[currentNodeNo];
+            StateNode currentNode = _matchAsContainsAutomatonTree[currentNodeNo];
             if (currentNode.FailureLink == -1)
             {
                 if (currentNodeNo == 0 || currentNode.ParentNodeNo == 0)
@@ -126,18 +164,19 @@ namespace Mash.AhoCoraSick
                 else
                 {
                     currentNode.FailureLink =
-                        NextNodeToGo(GetFailureLink(currentNode.ParentNodeNo), currentNode.ParentChar);
+                        NextNodeToGoForPatternContainsMatch(GetFailureLink(currentNode.ParentNodeNo), this.AlphabetToIndexValue((char)currentNode.ParentChar));
                 }
 
             }
 
-            return _automatonTree[currentNodeNo].FailureLink;
+            return currentNode.FailureLink;
         }
 
-        public bool GoToCharacter(char nextChar)
+        public bool GoToCharacter(char nextChar, out int newStateNo)
         {
             lock (_lock)
             {
+                newStateNo = -1;
                 int indexValue = this.AlphabetToIndexValue(nextChar);
                 if (indexValue < 0 || indexValue >= AlphabetSize)
                 {
@@ -145,8 +184,26 @@ namespace Mash.AhoCoraSick
                     return false;
 
                 }
-                _currentNodeNo = NextNodeToGo(_currentNodeNo, (byte)indexValue);
-                return _automatonTree[_currentNodeNo].IsMatch;
+
+                if (_matchAsWord)
+                {
+                    _currentNodeNo = NextNodeToGoForMatchAsWord(_currentNodeNo, indexValue);
+                    if (_currentNodeNo == -1)
+                    {
+                        _currentNodeNo = 0;
+                        return false;
+                    }
+
+                    newStateNo = _currentNodeNo;
+                    return _matchAsWordAutomatonTree[_currentNodeNo].IsMatch;
+                }
+                else
+                {
+                    _currentNodeNo = NextNodeToGoForPatternContainsMatch(_currentNodeNo, indexValue);
+                    newStateNo = _currentNodeNo;
+
+                    return _matchAsContainsAutomatonTree[_currentNodeNo].IsMatch;
+                }
             }
         }
 
