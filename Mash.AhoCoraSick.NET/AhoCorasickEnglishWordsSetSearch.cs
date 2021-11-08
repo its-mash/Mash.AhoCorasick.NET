@@ -15,9 +15,37 @@ namespace Mash.AhoCoraSick
         private readonly List<StateNodeWordMatch> _matchAsWordAutomatonTree = new List<StateNodeWordMatch>() { new StateNodeWordMatch() };
         //private int stateNoToStartFrom = 0;
         private bool _matchAsWord = false;
+        private readonly bool _patternIsValidEnglishWord;
 
         /// Though SEOAnalyzer will always call with valid wordCharacter, we can remove the checks for further optimization,
         /// but kept for Other Third-party uses, as we can't guaranty if third-party provide valid wordCharter
+        public bool IsAcceptablePattern(string s)
+        {
+            bool foundAlphabet = false;
+            if (s.IsNullOrEmpty()) return false;
+            for (int i = 0; i < s.Length; i++)
+            {
+                char ch = s[i];
+                if (ch <= '9' && ch >= '&')
+                {
+                    if (ch == '.' || ch >= '0') continue;
+
+                    if (ch == '-' || ch == '\'' || ch == '&')
+                    {
+                        if (i != 0 && i != s.Length - 1)
+                        {
+                            continue;
+                        }
+
+                        return false;
+                    }
+                }
+                if (ch < 'A' || ch > 'z' || (ch > 'Z' && ch < 'a')) return false;
+                foundAlphabet = true;
+
+            }
+            return (!this._patternIsValidEnglishWord || foundAlphabet);
+        }
         private int AlphabetToIndexValue(char ch)
         {
 
@@ -51,14 +79,15 @@ namespace Mash.AhoCoraSick
             return ch.ToLowerValueIfUpperCase() - 'a';
 
         }
-        public AhoCorasickEnglishWordsSetSearch(bool matchAsWord = false)
+        public AhoCorasickEnglishWordsSetSearch(bool matchAsWord = false, bool patternIsValidEnglishWord = false)
         {
             this._matchAsWord = matchAsWord;
-
+            this._patternIsValidEnglishWord = patternIsValidEnglishWord;
         }
-        public AhoCorasickEnglishWordsSetSearch(string[] englishWordsSet, bool matchAsWord = false)
+        public AhoCorasickEnglishWordsSetSearch(string[] englishWordsSet, bool matchAsWord = false, bool patternIsValidEnglishWord = false)
         {
             this._matchAsWord = matchAsWord;
+            this._patternIsValidEnglishWord = patternIsValidEnglishWord;
             if (englishWordsSet == null)
             {
                 throw new ArgumentNullException(nameof(englishWordsSet));
@@ -71,23 +100,23 @@ namespace Mash.AhoCoraSick
 
         }
 
-        public void AddEnglishWord(string searchWord)
+        public void AddEnglishWord(string searchPattern)
         {
             lock (_lock)
             {
 
-                if (searchWord.IsNullOrEmpty())
+                if (searchPattern.IsNullOrEmpty())
                 {
                     throw new ArgumentException("Search Word can't be null or empty");
                 }
 
-                if (!searchWord.IsValidEnglishWord())
+                if (!IsAcceptablePattern(searchPattern))
                 {
                     throw new ArgumentException("Search Word can only contain English Alphabets and (' and - and & and . ) chars in the middle");
                 }
 
                 int currentNodeNo = 0;
-                foreach (char ch in searchWord.ToCharArray())
+                foreach (char ch in searchPattern.ToCharArray())
                 {
                     int indexValue = this.AlphabetToIndexValue(ch);
                     if (_matchAsWord)
