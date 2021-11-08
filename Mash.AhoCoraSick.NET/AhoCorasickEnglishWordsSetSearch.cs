@@ -13,7 +13,7 @@ namespace Mash.AhoCoraSick
 
         private readonly List<StateNode> _matchAsContainsAutomatonTree = new List<StateNode>() { new StateNode() };
         private readonly List<StateNodeWordMatch> _matchAsWordAutomatonTree = new List<StateNodeWordMatch>() { new StateNodeWordMatch() };
-        private int _currentNodeNo = 0;
+        //private int stateNoToStartFrom = 0;
         private bool _matchAsWord = false;
 
         /// Though SEOAnalyzer will always call with valid wordCharacter, we can remove the checks for further optimization,
@@ -172,7 +172,7 @@ namespace Mash.AhoCoraSick
             return currentNode.FailureLink;
         }
 
-        public bool GoToCharacter(char nextChar, out int newStateNo)
+        public bool GoToCharacter(char nextChar, int stateNoToStartFrom, out int newStateNo)
         {
             lock (_lock)
             {
@@ -180,39 +180,35 @@ namespace Mash.AhoCoraSick
                 int indexValue = this.AlphabetToIndexValue(nextChar);
                 if (indexValue < 0 || indexValue >= AlphabetSize)
                 {
-                    _currentNodeNo = 0;
                     return false;
 
                 }
 
                 if (_matchAsWord)
                 {
-                    _currentNodeNo = NextNodeToGoForMatchAsWord(_currentNodeNo, indexValue);
-                    if (_currentNodeNo == -1)
+                    newStateNo = NextNodeToGoForMatchAsWord(stateNoToStartFrom, indexValue);
+                    if (newStateNo == -1)
                     {
-                        _currentNodeNo = 0;
                         return false;
                     }
 
-                    newStateNo = _currentNodeNo;
-                    return _matchAsWordAutomatonTree[_currentNodeNo].IsMatch;
+                    return _matchAsWordAutomatonTree[newStateNo].IsMatch;
                 }
                 else
                 {
-                    _currentNodeNo = NextNodeToGoForPatternContainsMatch(_currentNodeNo, indexValue);
-                    newStateNo = _currentNodeNo;
+                    newStateNo = NextNodeToGoForPatternContainsMatch(stateNoToStartFrom, indexValue);
 
-                    return _matchAsContainsAutomatonTree[_currentNodeNo].IsMatch;
+                    return _matchAsContainsAutomatonTree[newStateNo].IsMatch;
                 }
             }
         }
 
-        public void ResetSearchState()
-        {
-            lock (_lock)
-            {
-                this._currentNodeNo = 0;
-            }
-        }
+        //public void ResetSearchState()
+        //{
+        //    lock (_lock)
+        //    {
+        //        this._currentNodeNo = 0;
+        //    }
+        //}
     }
 }
